@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# local agent markdowns
+agent/
+
+# vscode 
+.vscode

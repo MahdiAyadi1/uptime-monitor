@@ -1,0 +1,105 @@
+services:
+  db:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: uptime_monitor
+      POSTGRES_USER: uptime_monitor
+      POSTGRES_PASSWORD: change-me
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uptime_monitor -d uptime_monitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://uptime_monitor:change-me@db:5432/uptime_monitor
+      API_KEY: replace-with-a-long-random-value
+      ALERT_WEBHOOK_URL: ""
+      LOG_LEVEL: INFO
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+psycopg://uptime_monitor:change-me@db:5432/uptime_monitor
+      API_KEY: replace-with-a-long-random-value
+      ALERT_WEBHOOK_URL: ""
+      FAILURE_THRESHOLD: "3"
+      MAX_CONCURRENT_PROBES: "20"
+      DUE_TOLERANCE_SECONDS: "5"
+      MAX_REDIRECTS: "0"
+      RESPONSE_BYTES_LIMIT: "1048576"
+      RETENTION_DAYS: "90"
+      PROBE_USER_AGENT: "uptime-monitor-portfolio/1.0"
+      LOG_LEVEL: INFO
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  checker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+psycopg://uptime_monitor:change-me@db:5432/uptime_monitor
+      API_KEY: replace-with-a-long-random-value
+      ALERT_WEBHOOK_URL: ""
+      FAILURE_THRESHOLD: "3"
+      MAX_CONCURRENT_PROBES: "20"
+      DUE_TOLERANCE_SECONDS: "5"
+      MAX_REDIRECTS: "0"
+      RESPONSE_BYTES_LIMIT: "1048576"
+      RETENTION_DAYS: "90"
+      PROBE_USER_AGENT: "uptime-monitor-portfolio/1.0"
+      LOG_LEVEL: INFO
+    command:
+      - sh
+      - -c
+      - while true; do python -m monitor.checker; sleep 60; done
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  grafana_data:
