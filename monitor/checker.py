@@ -14,8 +14,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from db.models import Monitor, ProbeResult
 from db.session import create_database_engine, create_session_factory
 from monitor.incidents import IncidentTransition, record_probe_result
+from monitor.logging_config import configure_logging
 from monitor.probing import ProbeOutcome, probe_monitor
 from monitor.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +122,7 @@ async def run_checker(
     async with httpx.AsyncClient(
         follow_redirects=False,
         headers={"User-Agent": user_agent},
+        trust_env=False,
     ) as client:
 
         async def check_one(target: MonitorTarget) -> tuple[ProbeOutcome, IncidentTransition]:
@@ -143,9 +147,21 @@ async def run_checker(
                 return outcome, transition
 
         results = await asyncio.gather(*(check_one(target) for target in targets))
-        for outcome, transition in results:
+        for target, (outcome, transition) in zip(targets, results, strict=True):
             outcomes.append(outcome)
             transitions.append(transition)
+            logger.info(
+                "Monitor probe completed",
+                extra={
+                    "event": "monitor.probe.completed",
+                    "monitor_id": target.id,
+                    "monitor_name": target.name,
+                    "is_up": outcome.is_up,
+                    "http_status": outcome.http_status,
+                    "latency_ms": outcome.latency_ms,
+                    "incident_transition": transition.value,
+                },
+            )
 
     return CheckerSummary(
         probed=len(outcomes),
@@ -159,10 +175,11 @@ async def run_checker(
 def main() -> int:
     """Load settings and run one checker pass."""
     settings = Settings()
+    configure_logging(settings.log_level)
     engine = create_database_engine(settings.database_url)
     session_factory = create_session_factory(engine)
     try:
-        asyncio.run(
+        summary = asyncio.run(
             run_checker(
                 session_factory,
                 failure_threshold=settings.failure_threshold,
@@ -172,8 +189,19 @@ def main() -> int:
                 due_tolerance_seconds=settings.due_tolerance_seconds,
             )
         )
+        logger.info(
+            "Checker pass completed",
+            extra={
+                "event": "checker.completed",
+                "probed": summary.probed,
+                "up": summary.up,
+                "down": summary.down,
+                "incidents_opened": summary.incidents_opened,
+                "incidents_resolved": summary.incidents_resolved,
+            },
+        )
     except Exception:
-        logging.exception("checker run failed")
+        logger.exception("Checker run failed", extra={"event": "checker.failed"})
         return 1
     return 0
 

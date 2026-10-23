@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -13,6 +14,7 @@ from db.models import Monitor, ProbeResult
 from monitor.url_validation import URLValidationError, validate_monitor_url
 
 router = APIRouter(prefix="/api")
+logger = logging.getLogger(__name__)
 
 
 def _hydrate_monitor(monitor: Monitor) -> MonitorRead:
@@ -40,6 +42,10 @@ def create_monitor(
     db.add(monitor)
     db.commit()
     db.refresh(monitor)
+    logger.info(
+        "Monitor created",
+        extra={"event": "monitor.created", "monitor_id": monitor.id, "monitor_name": monitor.name},
+    )
     return _hydrate_monitor(monitor)
 
 
@@ -74,6 +80,10 @@ def update_monitor(
 
     db.commit()
     db.refresh(monitor)
+    logger.info(
+        "Monitor updated",
+        extra={"event": "monitor.updated", "monitor_id": monitor.id, "monitor_name": monitor.name},
+    )
     return _hydrate_monitor(monitor)
 
 
@@ -88,6 +98,10 @@ def delete_monitor(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")
     db.delete(monitor)
     db.commit()
+    logger.info(
+        "Monitor deleted",
+        extra={"event": "monitor.deleted", "monitor_id": monitor.id, "monitor_name": monitor.name},
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

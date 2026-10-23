@@ -109,6 +109,18 @@ def test_run_checker_probes_due_monitor_and_persists_result(monkeypatch: Any) ->
         session.add(Monitor(id=1, name="checker-test", url="https://8.8.8.8"))
         session.commit()
 
+    client_options: dict[str, Any] = {}
+
+    class FakeAsyncClient:
+        def __init__(self, **kwargs: Any) -> None:
+            client_options.update(kwargs)
+
+        async def __aenter__(self) -> Any:
+            return self
+
+        async def __aexit__(self, *args: Any) -> None:
+            return None
+
     async def fake_probe_monitor(
         client: Any,
         target: Any,
@@ -118,6 +130,7 @@ def test_run_checker_probes_due_monitor_and_persists_result(monkeypatch: Any) ->
         return ProbeOutcome(True, 200, 42, None)
 
     monkeypatch.setattr(checker, "probe_monitor", fake_probe_monitor)
+    monkeypatch.setattr(checker.httpx, "AsyncClient", FakeAsyncClient)
     summary = asyncio.run(run_checker(session_factory, now=now))
 
     with session_factory() as session:
@@ -130,3 +143,4 @@ def test_run_checker_probes_due_monitor_and_persists_result(monkeypatch: Any) ->
     assert result.is_up is True
     assert result.http_status == 200
     assert result.latency_ms == 42
+    assert client_options["trust_env"] is False

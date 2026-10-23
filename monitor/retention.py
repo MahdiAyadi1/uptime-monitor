@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 
 from db.models import ProbeResult
 from db.session import create_database_engine, create_session_factory
+from monitor.logging_config import configure_logging
 from monitor.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 
 def prune_old_probe_results(
@@ -32,13 +35,25 @@ def prune_old_probe_results(
 def main() -> int:
     """Load settings and delete expired probe rows."""
     settings = Settings()
+    configure_logging(settings.log_level)
     engine = create_database_engine(settings.database_url)
     session_factory = create_session_factory(engine)
     try:
         with session_factory() as session:
-            prune_old_probe_results(session, retention_days=settings.retention_days)
+            deleted_count = prune_old_probe_results(
+                session,
+                retention_days=settings.retention_days,
+            )
+        logger.info(
+            "Probe result retention completed",
+            extra={
+                "event": "retention.completed",
+                "deleted_results": deleted_count,
+                "retention_days": settings.retention_days,
+            },
+        )
     except Exception:
-        logging.exception("retention cleanup failed")
+        logger.exception("Retention cleanup failed", extra={"event": "retention.failed"})
         return 1
     return 0
 
