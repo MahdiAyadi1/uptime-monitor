@@ -15,3 +15,7 @@ Alerts are sent only on transitions (open or resolve) rather than on every faile
 ## Security notes
 
 All URL validation is performed server-side before a probe is attempted. That protects the local portfolio app from SSRF-prone targets while keeping the scope of the project limited to the monitor service itself.
+
+## API test isolation
+
+The API CRUD contract tests use a per-test in-memory fake database, so they verify routing, validation, serialization, and authorization without requiring PostgreSQL locally or in CI. Existing persistence/domain tests remain unchanged. This keeps the developer workflow lightweight, with the trade-off that these tests do not verify PostgreSQL-specific persistence behavior; PostgreSQL integration coverage can be added if that becomes a project requirement.
