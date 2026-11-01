@@ -21,6 +21,13 @@ from monitor.settings import Settings
 logger = logging.getLogger(__name__)
 
 
+def _normalize_to_utc(value: datetime) -> datetime:
+    """Return an aware UTC datetime for comparison regardless of source timezone."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 @dataclass(frozen=True, slots=True)
 class MonitorTarget:
     """Detached monitor settings needed by a probe task."""
@@ -68,7 +75,7 @@ def load_due_monitors(
     if due_tolerance_seconds < 0:
         raise ValueError("due_tolerance_seconds must be non-negative")
 
-    current_time = now or datetime.now(UTC)
+    current_time = _normalize_to_utc(now or datetime.now(UTC))
     tolerance_window = timedelta(seconds=due_tolerance_seconds)
     monitors = session.scalars(select(Monitor).where(Monitor.enabled.is_(True))).all()
     if not monitors:
@@ -87,7 +94,7 @@ def load_due_monitors(
         if last_probed_at is None:
             due_at = None
         else:
-            due_at = last_probed_at + timedelta(seconds=monitor.interval_seconds)
+            due_at = _normalize_to_utc(last_probed_at) + timedelta(seconds=monitor.interval_seconds)
         if due_at is None or due_at <= current_time + tolerance_window:
             due_targets.append(MonitorTarget.from_model(monitor))
     return due_targets

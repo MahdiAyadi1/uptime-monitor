@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -108,6 +108,29 @@ def test_load_due_monitors_respects_interval_and_enabled_flag() -> None:
         targets = load_due_monitors(session, now=now)
 
     assert [target.name for target in targets] == ["due"]
+
+
+def test_load_due_monitors_handles_naive_sqlite_probe_times() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+
+    with Session(engine, expire_on_commit=False) as session:
+        monitor = Monitor(id=1, name="naive-sqlite", url="https://8.8.8.8", interval_seconds=60)
+        session.add(monitor)
+        session.flush()
+        session.add(
+            ProbeResult(
+                monitor_id=1,
+                probed_at=datetime(2026, 1, 1, 11, 59),
+                is_up=True,
+            )
+        )
+        session.commit()
+
+        targets = load_due_monitors(session, now=now, due_tolerance_seconds=5)
+
+    assert [target.name for target in targets] == ["naive-sqlite"]
 
 
 def test_load_due_monitors_uses_due_tolerance() -> None:
