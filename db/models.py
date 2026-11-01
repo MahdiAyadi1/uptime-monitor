@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -14,9 +15,16 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
+
+
+@compiles(BigInteger, "sqlite")
+def _compile_bigint_as_integer(element: BigInteger, compiler: object, **kwargs: object) -> str:
+    """Use SQLite's rowid-backed INTEGER primary key for SQLite databases."""
+    return "INTEGER"
 
 
 class Monitor(Base):

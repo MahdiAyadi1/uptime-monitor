@@ -1,10 +1,14 @@
 """Tests for due-monitor selection and checker orchestration."""
 
 import asyncio
+import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
-from sqlalchemy import BigInteger, create_engine, select
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import BigInteger, create_engine, select, text
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -19,6 +23,48 @@ from monitor.probing import ProbeOutcome
 def _compile_bigint_as_integer(element: BigInteger, compiler: object, **kwargs: object) -> str:
     """Use SQLite's rowid-backed INTEGER primary key for local unit tests."""
     return "INTEGER"
+
+
+def test_sqlite_migration_creates_auto_increment_ids() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    db_path = project_root / ".tmp_sqlite_migration_test.db"
+    if db_path.exists():
+        db_path.unlink()
+
+    previous_database_url = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+    try:
+        alembic_cfg = Config(str(project_root / "alembic.ini"))
+        command.upgrade(alembic_cfg, "head")
+
+        engine = create_engine(f"sqlite:///{db_path}")
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO monitor (name, url, expected_status, expected_keyword, timeout_seconds, interval_seconds, enabled) "
+                    "VALUES (:name, :url, :expected_status, :expected_keyword, :timeout_seconds, :interval_seconds, :enabled)"
+                ),
+                {
+                    "name": "demo-google",
+                    "url": "https://www.google.com",
+                    "expected_status": 200,
+                    "expected_keyword": None,
+                    "timeout_seconds": 10,
+                    "interval_seconds": 300,
+                    "enabled": True,
+                },
+            )
+            row = connection.execute(text("SELECT id, name FROM monitor WHERE name = :name"), {"name": "demo-google"}).first()
+            assert row is not None
+            assert row[0] is not None
+    finally:
+        if previous_database_url is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = previous_database_url
+        if db_path.exists():
+            engine.dispose()
+            db_path.unlink()
 
 
 def test_load_due_monitors_respects_interval_and_enabled_flag() -> None:

@@ -20,7 +20,7 @@ def upgrade() -> None:
     """Create monitors, probe results, and incidents."""
     op.create_table(
         "monitor",
-        sa.Column("id", sa.BigInteger(), sa.Identity(always=True), primary_key=True),
+        sa.Column("id", sa.Integer(), sa.Identity(always=True), primary_key=True),
         sa.Column("name", sa.Text(), nullable=False, unique=True),
         sa.Column("url", sa.Text(), nullable=False),
         sa.Column("expected_status", sa.Integer(), server_default=sa.text("200"), nullable=False),
@@ -34,8 +34,8 @@ def upgrade() -> None:
     )
     op.create_table(
         "probe_result",
-        sa.Column("id", sa.BigInteger(), sa.Identity(always=True), primary_key=True),
-        sa.Column("monitor_id", sa.BigInteger(), nullable=False),
+        sa.Column("id", sa.Integer(), sa.Identity(always=True), primary_key=True),
+        sa.Column("monitor_id", sa.Integer(), nullable=False),
         sa.Column(
             "probed_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
@@ -53,8 +53,8 @@ def upgrade() -> None:
     )
     op.create_table(
         "incident",
-        sa.Column("id", sa.BigInteger(), sa.Identity(always=True), primary_key=True),
-        sa.Column("monitor_id", sa.BigInteger(), nullable=False),
+        sa.Column("id", sa.Integer(), sa.Identity(always=True), primary_key=True),
+        sa.Column("monitor_id", sa.Integer(), nullable=False),
         sa.Column(
             "opened_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
