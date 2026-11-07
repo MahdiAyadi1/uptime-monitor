@@ -1,10 +1,13 @@
 apiVersion: 1
+
 datasources:
   - name: Uptime Postgres
     uid: uptime-postgres
     type: postgres
-    url: localhost:5432
-    user: uptime_monitor
+    access: proxy
+    isDefault: true
+    url: $UPTIME_DB_HOST
+    user: $UPTIME_DB_USER
     jsonData:
       database: uptime_monitor
       sslmode: disable

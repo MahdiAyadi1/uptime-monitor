@@ -12,11 +12,7 @@ done
 sudo systemctl daemon-reload
 sudo systemctl enable uptime-api uptime-checker.timer
 
-sudo mkdir -p /etc/grafana/provisioning /etc/grafana/dashboards
-sudo cp -r grafana/provisioning/. /etc/grafana/provisioning/
-sudo cp -r grafana/dashboards/. /etc/grafana/dashboards/
 sudo systemctl enable grafana-server
-sudo systemctl restart grafana-server
 
 printf '%s {\n    reverse_proxy 127.0.0.1:8000\n}\n' "$FQDN" | sudo tee /etc/caddy/Caddyfile >/dev/null
 sudo systemctl enable caddy

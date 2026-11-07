@@ -11,3 +11,8 @@ set -a; . /etc/uptime-monitor.env; set +a
 
 sudo systemctl restart uptime-api
 sudo systemctl restart uptime-checker.timer
+
+sudo mkdir -p /etc/grafana/provisioning /etc/grafana/dashboards
+sudo cp -r grafana/provisioning/. /etc/grafana/provisioning/
+sudo cp -r grafana/dashboards/. /etc/grafana/dashboards/
+sudo systemctl restart grafana-server
