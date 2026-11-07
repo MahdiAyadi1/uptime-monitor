@@ -54,7 +54,9 @@ def test_sqlite_migration_creates_auto_increment_ids() -> None:
                     "enabled": True,
                 },
             )
-            row = connection.execute(text("SELECT id, name FROM monitor WHERE name = :name"), {"name": "demo-google"}).first()
+            row = connection.execute(
+                text("SELECT id, name FROM monitor WHERE name = :name"), {"name": "demo-google"}
+            ).first()
             assert row is not None
             assert row[0] is not None
     finally:
