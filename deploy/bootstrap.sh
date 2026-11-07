@@ -6,7 +6,9 @@ cd /opt/uptime-monitor
 # Grafana provisioning written for compose refers to host "db"; point it at localhost
 grep -q ' db$' /etc/hosts || echo '127.0.0.1 db' | sudo tee -a /etc/hosts >/dev/null
 
-sudo install -m 644 deploy/uptime-api.service deploy/uptime-checker.service deploy/uptime-checker.timer /etc/systemd/system/
+for unit in uptime-api.service uptime-checker.service uptime-checker.timer; do
+  sed "s/^User=deploy/User=$(id -un)/" "deploy/$unit" | sudo tee "/etc/systemd/system/$unit" >/dev/null
+done
 sudo systemctl daemon-reload
 sudo systemctl enable uptime-api uptime-checker.timer
 

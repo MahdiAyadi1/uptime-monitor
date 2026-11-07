@@ -1,0 +1,12 @@
+apiVersion: 1
+datasources:
+  - name: Uptime Postgres
+    uid: uptime-postgres
+    type: postgres
+    url: localhost:5432
+    user: uptime_monitor
+    jsonData:
+      database: uptime_monitor
+      sslmode: disable
+    secureJsonData:
+      password: $UPTIME_DB_PASSWORD

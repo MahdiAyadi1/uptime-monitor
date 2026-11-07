@@ -2,7 +2,7 @@
 set -euo pipefail
 cd /opt/uptime-monitor
 
-[ -d .venv ] || python3 -m venv .venv
+[ -d .venv ] || python3.11 -m venv .venv
 .venv/bin/pip install --quiet --upgrade pip
 .venv/bin/pip install --quiet -e .
 

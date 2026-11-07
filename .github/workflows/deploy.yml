@@ -26,4 +26,10 @@ jobs:
           echo "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
 
       - name: Deploy
-        run: make deploy VM_HOST=${{ secrets.VM_HOST }} SSH_OPTS="-i ~/.ssh/deploy_key"
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          tar -czf /tmp/uptime-monitor.tgz app monitor db migrations grafana deploy alembic.ini pyproject.toml README.md
+          scp -i ~/.ssh/deploy_key /tmp/uptime-monitor.tgz "$VM_USER@$VM_HOST:/tmp/uptime-monitor.tgz"
+          ssh -i ~/.ssh/deploy_key "$VM_USER@$VM_HOST" "cd /opt/uptime-monitor && rm -rf app monitor db migrations grafana deploy && tar -xzf /tmp/uptime-monitor.tgz && find deploy -type f -exec sed -i 's/\r//g' {} + && bash deploy/release.sh"
