@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to demo VM
+    runs-on: ubuntu-latest
+    environment: demo
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "$VM_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: make deploy VM_HOST=${{ secrets.VM_HOST }} SSH_OPTS="-i ~/.ssh/deploy_key"

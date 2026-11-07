@@ -1,0 +1,13 @@
+[Unit]
+Description=Uptime monitor API
+After=network.target postgresql.service
+
+[Service]
+User=deploy
+WorkingDirectory=/opt/uptime-monitor
+EnvironmentFile=/etc/uptime-monitor.env
+ExecStart=/opt/uptime-monitor/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

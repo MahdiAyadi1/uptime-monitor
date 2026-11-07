@@ -224,3 +224,8 @@ agent/
 
 # vscode 
 .vscode
+
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars

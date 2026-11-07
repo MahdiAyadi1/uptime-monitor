@@ -1,0 +1,10 @@
+[Unit]
+Description=Uptime monitor checker (one run)
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=deploy
+WorkingDirectory=/opt/uptime-monitor
+EnvironmentFile=/etc/uptime-monitor.env
+ExecStart=/opt/uptime-monitor/.venv/bin/python -m monitor.checker
